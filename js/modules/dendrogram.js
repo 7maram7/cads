@@ -222,7 +222,7 @@ module.exports = {
 
       // On exit reduce the node circles size to 0
       nodeExit.select('circle')
-        .attr( 1e-6);
+        .attr('r', 1e-6);
 
       // On exit reduce the opacity of text labels
       nodeExit.select('text')

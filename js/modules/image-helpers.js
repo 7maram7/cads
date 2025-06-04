@@ -1,7 +1,7 @@
 // https://github.com/justadudewhohacks/opencv-electron/blob/master/plain-js/app/image-helpers.js
 const cv = require('opencv4nodejs');
-const pngPrefix = 'data:image/jpeg;base64,';
-const jpgPrefix = 'data:image/png;base64,';
+const pngPrefix = 'data:image/png;base64,';
+const jpgPrefix = 'data:image/jpeg;base64,';
 
 module.exports = {
   decodeImageFromBase64: function(base64String) {

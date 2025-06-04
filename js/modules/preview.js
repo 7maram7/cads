@@ -14,8 +14,8 @@ module.exports = {
 	imagePreview: function(labels){
 		/* CONFIG */
 
-			xOffset = 10;
-			yOffset = 30;
+                       const xOffset = 10;
+                       const yOffset = 30;
 
 			// these 2 variable determine popup's distance from the cursor
 			// you might want to adjust to get the right result

@@ -5,6 +5,7 @@ const ih = require('../../js/modules/image-helpers.js');
 const cv = require('opencv4nodejs');
 const props = require('../../js/modules/properties.js');
 const path = require('path');
+const remote = require('electron').remote;
 
 module.exports = {
   drawDendrogram: function(divId, data, descriptors, rootDir) {

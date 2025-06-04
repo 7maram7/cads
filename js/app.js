@@ -4,6 +4,7 @@ import {MDCRipple} from '@material/ripple';
 import {MDCSnackbar} from '@material/snackbar';
 import { saveAs } from 'file-saver';
 const remote = window.require('electron').remote;
+const fs = require('fs');
 
 // Set window title
 var pjson = require('../package.json');

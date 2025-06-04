@@ -4,11 +4,12 @@ const d3 = require('d3');
 const ih = require('../../js/modules/image-helpers.js');
 const cv = require('opencv4nodejs');
 const props = require('../../js/modules/properties.js');
+const path = require('path');
 
 module.exports = {
   drawDendrogram: function(divId, data, descriptors, rootDir) {
 
-    labels = descriptors.map(x => x.filename);
+    const labels = descriptors.map(x => x.filename);
 
 //DEBUG:::
   const vpHeight = 400;

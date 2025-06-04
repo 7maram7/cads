@@ -41,5 +41,5 @@ if [ ! -f "$BUILD_DIR/opencv.js" ]; then
     # Build opencv.js
     # Specify --emscripten_dir because the $EMSCRIPTEN variable doesn't get set properly otherwise and CMake will fuss
     echo "CADS | building opencv.js"
-    python $OPENCV_HOME/platforms/js/build_js.py $BUILD_DIR --build_wasm --emscripten_dir emsdk/fastcomp/emscripten --threads
+    python3 $OPENCV_HOME/platforms/js/build_js.py $BUILD_DIR --build_wasm --emscripten_dir emsdk/fastcomp/emscripten --threads
 fi

@@ -12,8 +12,10 @@ You can view a talk on CADS [here](https://youtu.be/wF6aZdhc0wg), or read about 
 
 ## Building
 
-A pre-compiled version of `opencv.js` is included out-of-the-box, but you can use `dev/build_opencvjs_linux.sh` to compile it yourself on a linux machine. It will install the necessary toolchain. Be sure to have Python 2.7.x installed before running.
+A pre-compiled version of `opencv.js` is included out-of-the-box, but you can use `dev/build_opencvjs_linux.sh` to compile it yourself on a linux machine. It will install the necessary toolchain. Be sure to have **Python 3** installed before running.
 
 ## Running
+
+The project expects Node.js 14 or 16. Using much newer versions can cause native dependencies such as `opencv4nodejs` to fail to build. Make sure one of these versions is active (for example via `nvm`).
 
 To run the application from source, simply `npm install` to get the dependencies, then `npm start`. This will bring up an Electron window.

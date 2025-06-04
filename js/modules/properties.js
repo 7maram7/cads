@@ -1,5 +1,7 @@
 const Tokenfield = require('tokenfield');
 const remote = require('electron').remote;
+const path = require('path');
+const modal = require('./modal.js');
 
 var activeNode = undefined;
 var descriptors = undefined;
@@ -161,6 +163,7 @@ module.exports = {
 
 function addPropsListener() {
   // Annotate cluster with tags
+  let tags = remote.getGlobal('shared').tags;
   const propsTagInput = document.querySelector('.tokenfield-input');
   propsTagInput.addEventListener("keydown", (event) => {
     // Number 13 is the "Enter" key on the keyboard

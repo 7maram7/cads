@@ -5,7 +5,7 @@ const path = require("path");
 const { agnes } = require("ml-hclust");
 const dendrogram = require("../js/modules/dendrogram.js");
 const modal = require("../js/modules/modal.js");
-// const remote = require('electron').remote;
+const remote = require('electron').remote;
 const tmp = require("tmp");
 const mdc = require("material-components-web");
 const Tokenfield = require("tokenfield");
@@ -522,4 +522,3 @@ function load(saveFile) {
     parsedJSON.rootDir
   );
 }
-const remote = require("electron").remote;

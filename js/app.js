@@ -4,6 +4,7 @@ import {MDCRipple} from '@material/ripple';
 import {MDCSnackbar} from '@material/snackbar';
 import { saveAs } from 'file-saver';
 const remote = window.require('electron').remote;
+const fs = window.require('fs');
 
 // Set window title
 var pjson = require('../package.json');
@@ -50,15 +51,52 @@ navSaveEl.addEventListener('click', (event) => {
   else {
     fs.readFile(tempFile, 'utf8', function(err, data) {
       if (err) {
-        return console.log(err);
-
+        console.log(err);
         snackbar_label.innerHTML = "Unable to save file. Please try again.";
         snackbar.open();
+        return;
       }
 
-      // Save permanently
-      var blob = new Blob([data], {type: "text/javascript"});
-      saveAs(blob, "filename.json");
+      // Save permanently with timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const filename = `cads-study-${timestamp}.json`;
+      var blob = new Blob([data], {type: "application/json"});
+      saveAs(blob, filename);
+
+      // Show success message
+      snackbar_label.innerHTML = `Study saved as ${filename}`;
+      snackbar.open();
+    });
+  }
+});
+
+// Export button functionality (same as Save)
+const navExportEl = document.querySelector('.nav-action-export');
+navExportEl.addEventListener('click', (event) => {
+  const tempFile = remote.getGlobal('shared').tempFileLoc;
+  if (!tempFile) {
+    // Alert no file to export
+    snackbar_label.innerHTML = "No file to export, try loading a die study first.";
+    snackbar.open();
+  }
+  else {
+    fs.readFile(tempFile, 'utf8', function(err, data) {
+      if (err) {
+        console.log(err);
+        snackbar_label.innerHTML = "Unable to export file. Please try again.";
+        snackbar.open();
+        return;
+      }
+
+      // Export with timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const filename = `cads-study-${timestamp}.json`;
+      var blob = new Blob([data], {type: "application/json"});
+      saveAs(blob, filename);
+
+      // Show success message
+      snackbar_label.innerHTML = `Study exported as ${filename}`;
+      snackbar.open();
     });
   }
 });

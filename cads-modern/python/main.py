@@ -8,7 +8,7 @@ import sys
 import json
 import os
 from typing import Dict, Any, List
-from feature_detection import FeatureDetector, compute_distance_matrix
+from feature_detection import FeatureDetector
 from clustering import perform_clustering
 
 
@@ -90,12 +90,31 @@ def analyze_images(image_paths: List[str]) -> Dict[str, Any]:
             'error': 'No features detected in any images'
         }
 
-    # Step 2: Compute pairwise distance matrix
-    send_progress(0, len(features_list), 'Computing pairwise distances...')
+    # Step 2: Compute pairwise distance matrix with progress tracking
+    n = len(features_list)
+    total_pairs = (n * (n - 1)) // 2
+    send_progress(0, total_pairs, 'Computing pairwise distances...')
 
-    distance_matrix = compute_distance_matrix(features_list)
+    # Compute distances with progress updates
+    distance_matrix = [[0.0] * n for _ in range(n)]
+    pair_count = 0
 
-    send_progress(len(features_list), len(features_list), 'Distance computation complete')
+    for i in range(n):
+        for j in range(i + 1, n):
+            desc1 = features_list[i]['descriptors']
+            desc2 = features_list[j]['descriptors']
+
+            distance = detector.match_features(desc1, desc2)
+            distance_matrix[i][j] = distance
+            distance_matrix[j][i] = distance
+
+            pair_count += 1
+            # Send progress every 50 pairs to avoid flooding
+            if pair_count % 50 == 0 or pair_count == total_pairs:
+                send_progress(pair_count, total_pairs,
+                            f'Comparing images: {pair_count}/{total_pairs} pairs')
+
+    send_progress(total_pairs, total_pairs, 'Distance computation complete')
 
     # Step 3: Perform hierarchical clustering
     send_progress(0, 1, 'Performing hierarchical clustering...')

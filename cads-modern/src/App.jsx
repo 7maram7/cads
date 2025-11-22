@@ -36,17 +36,28 @@ function App() {
     // Check if script is already in the page
     const existingScript = document.querySelector('script[src*="opencv.js"]');
     if (existingScript) {
-      console.log('OpenCV script already exists, setting up callback...');
+      console.log('OpenCV script already exists, waiting for window.cv...');
       isOpenCVLoading = true;
 
-      // Set up the runtime initialization callback
-      window.Module = {
-        onRuntimeInitialized: () => {
-          console.log('OpenCV.js runtime initialized!');
+      // Wait for window.cv to be available
+      const checkCvReady = setInterval(() => {
+        if (window.cv && window.cv.Mat) {
+          clearInterval(checkCvReady);
+          console.log('window.cv is ready!');
           setCvReady(true);
           isOpenCVLoading = false;
         }
-      };
+      }, 100);
+
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        if (!window.cv || !window.cv.Mat) {
+          clearInterval(checkCvReady);
+          console.error('window.cv never became available');
+          isOpenCVLoading = false;
+          alert('OpenCV failed to load. Please refresh the page.');
+        }
+      }, 10000);
       return;
     }
 
@@ -57,9 +68,26 @@ function App() {
     // Set up the Module callback BEFORE loading the script
     window.Module = {
       onRuntimeInitialized: () => {
-        console.log('OpenCV.js runtime initialized successfully!');
-        setCvReady(true);
-        isOpenCVLoading = false;
+        console.log('OpenCV.js WASM runtime initialized, checking for cv object...');
+
+        // Wait for window.cv to be available
+        const checkCvReady = setInterval(() => {
+          if (window.cv && window.cv.Mat) {
+            clearInterval(checkCvReady);
+            console.log('window.cv is ready! OpenCV.js fully initialized.');
+            setCvReady(true);
+            isOpenCVLoading = false;
+          }
+        }, 100);
+
+        // Timeout after 5 seconds
+        setTimeout(() => {
+          if (!window.cv || !window.cv.Mat) {
+            clearInterval(checkCvReady);
+            console.error('window.cv never became available after runtime init');
+            isOpenCVLoading = false;
+          }
+        }, 5000);
       }
     };
 

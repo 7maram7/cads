@@ -1,96 +1,229 @@
-# CADS Modern - Computer-Aided Die Study Tool
+# CADS Modern - Computer-Aided Die Study
 
-A modern, rebuilt version of CADS using the latest technologies. Works seamlessly on macOS (including M1/M2/M3/M4), Windows, and Linux.
+A modern desktop application for numismatic die analysis using computer vision and hierarchical clustering.
 
 ## ✨ Features
 
 - 📁 **Load coin images** from any folder
-- 🔍 **Automatic feature detection** using OpenCV.js ORB algorithm
+- 🔍 **Automatic feature detection** using OpenCV ORB algorithm
 - 📊 **Hierarchical clustering** to group coins by die similarity
 - 🌳 **Interactive dendrogram visualization** using D3.js
 - 💾 **Export results** as JSON for further analysis
-- ⚡ **Modern, fast, and responsive** UI
+- ⚡ **Fast and reliable** Python backend for computer vision
+- 🖥️ **Modern UI** built with React and Electron
 
-## 🚀 Installation (Mac M4)
+## 🏗️ Architecture
 
-### Quick Start
+- **Frontend**: Electron + React + D3.js for the user interface
+- **Backend**: Python with OpenCV for computer vision processing
+- **Communication**: IPC (Inter-Process Communication) between Electron and Python
+
+This architecture provides:
+- ✅ **Reliable installation** (no native compilation issues)
+- ✅ **Fast processing** (native Python OpenCV performance)
+- ✅ **M4 Mac compatible** (works on all Apple Silicon)
+- ✅ **Same algorithms** as original CADS
+
+## 📋 Prerequisites
+
+### Required Software
+
+1. **Node.js** (v18 or later)
+   - Download from: https://nodejs.org/
+   - Or install with Homebrew: `brew install node`
+   - Verify installation: `node --version`
+
+2. **Python 3** (v3.8 or later)
+   - macOS has Python 3 pre-installed
+   - Verify installation: `python3 --version`
+
+3. **pip** (Python package manager)
+   - Usually comes with Python 3
+   - Verify installation: `pip3 --version`
+
+## 🚀 Installation
+
+### Step 1: Install Python Dependencies
 
 ```bash
-# Clone the repository
-cd ~/
-git clone <your-repo-url> cads-modern
 cd cads-modern
+pip3 install -r python/requirements.txt
+```
 
-# Install dependencies (uses Node 20+, no Python issues!)
+This will install:
+- `opencv-python` (4.8.1) - Computer vision library
+- `numpy` (1.24.3) - Numerical computing
+- `scipy` (1.11.4) - Scientific computing (for clustering)
+
+**Note**: On Mac M4, these packages install cleanly via pip without any compilation.
+
+### Step 2: Install Node.js Dependencies
+
+```bash
 npm install
+```
 
-# Run the app
+This installs Electron, React, Vite, D3.js, and other frontend dependencies.
+
+### Step 3: Verify Installation
+
+```bash
+# Test Python dependencies
+python3 -c "import cv2, numpy, scipy; print('Python OK')"
+
+# Should print: Python OK
+```
+
+## 🎯 Running the Application
+
+### Development Mode
+
+```bash
 npm run electron:dev
 ```
 
-### Prerequisites
+This will:
+1. Start the Vite development server (React frontend)
+2. Launch the Electron application
+3. Open developer tools for debugging
 
-- **Node.js 20+** (Install via: `brew install node`)
-- **npm** (comes with Node.js)
+### First Time Setup Check
 
-That's it! No Python, no native compilation, no headaches.
+When the app opens, verify in the sidebar:
+- "Python Backend: **Ready**" (should be green)
+- No errors in the developer console
 
-## 🎯 How to Use
+## 📖 How to Use
 
-1. **Load Images**
-   - Click "📁 Load Coin Images"
-   - Select a folder containing your coin images
-   - Supported formats: JPG, PNG, BMP, TIFF
+### 1. Load Images
 
-2. **Analyze Dies**
-   - Click "🔍 Analyze Dies"
-   - Wait for processing (shows progress bar)
-   - The tool will:
-     - Detect features in each image
-     - Compare all images pairwise
-     - Perform hierarchical clustering
+1. Click **"📁 Load Coin Images"** button
+2. Select a folder containing your coin images
+3. Supported formats: JPG, JPEG, PNG, BMP, TIFF
 
-3. **View Results**
-   - The dendrogram shows die relationships
-   - Shorter branches = more similar dies
-   - Leaf nodes = individual coins
+The sidebar will display how many images were loaded.
 
-4. **Export**
-   - Click "💾 Export Results"
-   - Save the study as JSON
-   - Includes clustering data and feature information
+### 2. Analyze Dies
 
-## 🏗️ Technology Stack
+1. Click **"🔍 Analyze Dies"** button
+2. Watch the progress bar as the analysis runs:
+   - **Feature Detection**: Finds distinctive points in each coin (ORB algorithm)
+   - **Distance Computation**: Calculates similarity between all coin pairs
+   - **Clustering**: Groups coins by die similarity (AGNES algorithm)
 
-- **Electron 32** - Cross-platform desktop app
-- **React 18** - Modern UI framework
-- **Vite 5** - Lightning-fast build tool
-- **OpenCV.js** - WebAssembly computer vision (no native compilation!)
-- **D3.js** - Data visualization for dendrograms
-- **ml-hclust** - Hierarchical clustering algorithm
+**Processing time**: ~2-5 seconds per image depending on resolution
 
-## 📊 How It Works
+### 3. View Results
 
-### 1. Feature Detection
-- Uses ORB (Oriented FAST and Rotated BRIEF) algorithm
-- Detects up to 1000 keypoints per image
-- Applies Gaussian blur to reduce noise
-- Same algorithm as original CADS
+The dendrogram (tree diagram) shows:
+- 🔴 **Leaf nodes** (red circles): Individual coins
+- 🔵 **Internal nodes** (blue circles): Cluster points
+- 📏 **Branch lengths**: Die similarity (shorter = more similar)
+- 🔢 **Numbers on branches**: Distance values
 
-### 2. Feature Matching
-- BFMatcher with Hamming distance
-- Computes similarity between all image pairs
-- Creates distance matrix for clustering
+### 4. Export Results
 
-### 3. Hierarchical Clustering
-- AGNES (Agglomerative Nesting) algorithm
-- Complete linkage method
-- Same as original CADS methodology
+1. Click **"💾 Export Results"** button
+2. Choose where to save the JSON file
+3. The file contains:
+   - All detected features
+   - Distance matrix
+   - Clustering hierarchy
+   - Timestamps and metadata
 
-### 4. Visualization
-- D3.js dendrogram layout
-- Interactive, scalable SVG
-- Shows similarity distances on branches
+## 🔬 Technical Details
+
+### Feature Detection
+
+- **Algorithm**: ORB (Oriented FAST and Rotated BRIEF)
+- **Features per image**: 1000
+- **Preprocessing**: Gaussian blur (5x5 kernel) to reduce noise
+- **Implementation**: OpenCV Python (cv2.ORB_create)
+
+### Feature Matching
+
+- **Matcher**: Brute-Force Matcher with Hamming distance
+- **Cross-check**: Enabled for better match quality
+- **Distance normalization**: Adjusted by match ratio to penalize low-matching pairs
+
+### Hierarchical Clustering
+
+- **Algorithm**: AGNES (Agglomerative Nesting)
+- **Linkage method**: Complete linkage
+- **Library**: SciPy's `scipy.cluster.hierarchy`
+- **Same method as original CADS**
+
+## 🐛 Troubleshooting
+
+### "Python Backend: Not Available"
+
+**Problem**: Python is not found or dependencies are missing
+
+**Solutions**:
+```bash
+# Verify Python is installed
+python3 --version
+
+# Reinstall Python dependencies
+pip3 install -r python/requirements.txt
+
+# On macOS, ensure python3 is in PATH
+which python3
+```
+
+### "Failed to start Python: ..."
+
+**Problem**: Python script path is incorrect or permissions issue
+
+**Solutions**:
+```bash
+# Make Python script executable
+chmod +x python/main.py
+
+# Test Python script manually
+echo '{"command":"ping"}' | python3 python/main.py
+# Should output: {"type": "result", "data": {"success": true, "message": "pong"}}
+```
+
+### "No features detected in any images"
+
+**Problem**: Images are corrupted, wrong format, or too low quality
+
+**Solutions**:
+- Verify images open in an image viewer
+- Use high-resolution images (at least 800x800 pixels recommended)
+- Ensure good lighting and contrast
+- Try different images to isolate the problem
+
+### Analysis is very slow
+
+**Solutions**:
+- Start with fewer images (10-20) to test
+- Use smaller image files (resize to 1200x1200 max)
+- Close other applications to free up CPU/memory
+- High-resolution images take longer but produce better results
+
+## 📂 File Structure
+
+```
+cads-modern/
+├── python/                 # Python backend
+│   ├── main.py            # Entry point for Python processing
+│   ├── feature_detection.py  # ORB feature detection
+│   ├── clustering.py      # Hierarchical clustering
+│   └── requirements.txt   # Python dependencies
+├── electron/              # Electron main process
+│   └── main.js            # IPC handlers and window management
+├── src/                   # React frontend
+│   ├── App.jsx            # Main application component
+│   ├── components/        # UI components
+│   │   ├── Controls.jsx
+│   │   ├── Dendrogram.jsx
+│   │   └── ImageLoader.jsx
+│   └── styles/            # CSS styles
+├── package.json           # Node.js dependencies
+└── README.md             # This file
+```
 
 ## 🔧 Development
 
@@ -105,7 +238,7 @@ npm run electron:build
 npm run build
 ```
 
-## 📝 Export Format
+## 📊 Export Format
 
 The JSON export includes:
 
@@ -115,12 +248,14 @@ The JSON export includes:
   "imageCount": 50,
   "images": ["path/to/image1.jpg", ...],
   "clustering": {
-    "children": [...],
-    "distance": 123.45
+    "name": "Cluster 0",
+    "distance": 123.45,
+    "children": [...]
   },
   "features": [
     {
-      "imagePath": "path/to/image1.jpg",
+      "name": "image1.jpg",
+      "path": "/full/path/image1.jpg",
       "keypointCount": 876
     }
   ]
@@ -131,43 +266,33 @@ The JSON export includes:
 
 | Feature | Original CADS | CADS Modern |
 |---------|--------------|-------------|
-| OpenCV | Native (opencv4nodejs) | WebAssembly (opencv.js) |
-| Node Version | 12-16 only | 18+ (any modern version) |
-| Python Required | Yes (for node-gyp) | No |
+| OpenCV | Native (opencv4nodejs) | Python (opencv-python) |
+| Installation | Complex, often fails | Simple, always works |
+| Mac M4 Support | ❌ Broken | ✅ Works perfectly |
 | Build Time | 20-30 minutes | 2-3 minutes |
-| Installation Issues | Many on macOS | None |
-| UI Framework | jQuery + Material Components | React 18 |
+| Python Required | For compilation only | For runtime (better!) |
+| UI Framework | jQuery + Material | React 18 |
 | Bundler | Webpack 4 | Vite 5 |
 | Electron | v6 (2019) | v32 (2024) |
+| Algorithms | ORB + AGNES | ORB + AGNES (same!) |
 
-## 🐛 Troubleshooting
-
-### OpenCV not loading
-- Wait 10-15 seconds after app starts
-- Check "OpenCV Status" in sidebar shows "Ready"
-- Refresh the app if needed
-
-### Images not displaying
-- Make sure image paths don't contain special characters
-- Supported formats: JPG, PNG, BMP, TIFF
-
-### App won't start
-```bash
-# Clear and reinstall
-rm -rf node_modules package-lock.json
-npm install
-npm run electron:dev
-```
-
-## 📖 Credits
+## 🎓 Credits
 
 Based on the original CADS project by ztaylor54:
 - [Original Repository](https://github.com/ztaylor54/cads)
 - [Research Paper](https://digitalcommons.trinity.edu/compsci_honors/54)
 - Developed in collaboration with the American Numismatic Society
 
-Rebuilt with modern technologies for better compatibility and ease of use.
+Rebuilt with modern technologies for better compatibility and reliability.
 
 ## 📜 License
 
 MIT License - Same as original CADS
+
+## 💡 Tips for Best Results
+
+1. **Image Quality**: Use high-resolution images (1000x1000 or larger)
+2. **Consistent Lighting**: Images with similar lighting produce better results
+3. **Clean Backgrounds**: Solid or consistent backgrounds work best
+4. **Image Count**: Start with 10-20 images to test, then scale up
+5. **Save Your Work**: Export results after each analysis session

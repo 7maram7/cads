@@ -64,11 +64,8 @@ function Dendrogram({ data, images }) {
       .style('font-size', '12px')
       .style('fill', '#2c3e50')
       .text(d => {
-        if (d.data.imagePath) {
-          const filename = d.data.imagePath.split('/').pop();
-          return filename.length > 30 ? filename.substring(0, 27) + '...' : filename;
-        }
-        return '';
+        const name = d.data.name || '';
+        return name.length > 30 ? name.substring(0, 27) + '...' : name;
       });
 
     // Add distance labels for internal nodes

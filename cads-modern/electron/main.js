@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import fs from 'fs/promises';
+import { spawn } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -70,6 +71,88 @@ ipcMain.handle('save-file', async (event, data, filename) => {
 
   await fs.writeFile(result.filePath, JSON.stringify(data, null, 2));
   return true;
+});
+
+// Handle image analysis using Python backend
+ipcMain.handle('analyze-images', async (event, imagePaths) => {
+  return new Promise((resolve, reject) => {
+    // Path to Python script
+    const pythonScript = join(__dirname, '..', 'python', 'main.py');
+
+    // Spawn Python process
+    // Use 'python3' command - should work on Mac M4
+    const pythonProcess = spawn('python3', [pythonScript]);
+
+    let stdoutBuffer = '';
+    let stderrBuffer = '';
+
+    // Handle Python stdout (JSON messages)
+    pythonProcess.stdout.on('data', (data) => {
+      stdoutBuffer += data.toString();
+
+      // Process complete JSON messages (one per line)
+      const lines = stdoutBuffer.split('\n');
+
+      // Keep the last incomplete line in buffer
+      stdoutBuffer = lines.pop() || '';
+
+      // Process each complete line
+      lines.forEach(line => {
+        if (!line.trim()) return;
+
+        try {
+          const message = JSON.parse(line);
+
+          if (message.type === 'progress') {
+            // Send progress update to renderer
+            event.sender.send('analysis-progress', {
+              current: message.current,
+              total: message.total,
+              status: message.message
+            });
+          } else if (message.type === 'error') {
+            // Send error to renderer
+            event.sender.send('analysis-error', message.message);
+          } else if (message.type === 'result') {
+            // Final result received
+            resolve(message.data);
+          }
+        } catch (e) {
+          console.error('Failed to parse Python output:', line, e);
+        }
+      });
+    });
+
+    // Handle Python stderr (errors and debug output)
+    pythonProcess.stderr.on('data', (data) => {
+      stderrBuffer += data.toString();
+      console.error('Python stderr:', data.toString());
+    });
+
+    // Handle process completion
+    pythonProcess.on('close', (code) => {
+      if (code !== 0) {
+        const error = `Python process exited with code ${code}\nStderr: ${stderrBuffer}`;
+        console.error(error);
+        reject(new Error(error));
+      }
+    });
+
+    // Handle process errors
+    pythonProcess.on('error', (error) => {
+      console.error('Failed to start Python process:', error);
+      reject(new Error(`Failed to start Python: ${error.message}`));
+    });
+
+    // Send command to Python via stdin
+    const command = {
+      command: 'analyze',
+      image_paths: imagePaths
+    };
+
+    pythonProcess.stdin.write(JSON.stringify(command));
+    pythonProcess.stdin.end();
+  });
 });
 
 app.whenReady().then(createWindow);

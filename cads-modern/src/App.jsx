@@ -2,13 +2,8 @@ import React, { useState, useEffect } from 'react';
 import ImageLoader from './components/ImageLoader';
 import Dendrogram from './components/Dendrogram';
 import Controls from './components/Controls';
-import { detectFeatures, matchFeatures } from './utils/featureDetection';
-import { performClustering } from './utils/clustering';
 
 const { ipcRenderer } = window.require('electron');
-
-// Module-level flag to prevent duplicate OpenCV loading across React re-renders
-let isOpenCVLoading = false;
 
 function App() {
   const [images, setImages] = useState([]);
@@ -16,108 +11,48 @@ function App() {
   const [progress, setProgress] = useState({ current: 0, total: 0, status: '' });
   const [features, setFeatures] = useState([]);
   const [clustering, setClustering] = useState(null);
-  const [cvReady, setCvReady] = useState(false);
+  const [pythonReady, setPythonReady] = useState(false);
 
-  // Load OpenCV.js
+  // Check if Python is available on mount
   useEffect(() => {
-    // Check if OpenCV is already loaded
-    if (window.cv && window.cv.Mat) {
-      setCvReady(true);
-      console.log('OpenCV.js already loaded!');
-      return;
-    }
-
-    // Check if we're already loading
-    if (isOpenCVLoading) {
-      console.log('OpenCV is already being loaded, waiting...');
-      return;
-    }
-
-    // Check if script is already in the page
-    const existingScript = document.querySelector('script[src*="opencv.js"]');
-    if (existingScript) {
-      console.log('OpenCV script already exists, waiting for window.cv...');
-      isOpenCVLoading = true;
-
-      // Wait for window.cv to be available
-      const checkCvReady = setInterval(() => {
-        if (window.cv && window.cv.Mat) {
-          clearInterval(checkCvReady);
-          console.log('window.cv is ready!');
-          setCvReady(true);
-          isOpenCVLoading = false;
-        }
-      }, 100);
-
-      // Timeout after 10 seconds
-      setTimeout(() => {
-        if (!window.cv || !window.cv.Mat) {
-          clearInterval(checkCvReady);
-          console.error('window.cv never became available');
-          isOpenCVLoading = false;
-          alert('OpenCV failed to load. Please refresh the page.');
-        }
-      }, 10000);
-      return;
-    }
-
-    // Mark that we're starting to load
-    isOpenCVLoading = true;
-    console.log('Starting to load OpenCV.js...');
-
-    // Set up the Module callback BEFORE loading the script
-    window.Module = {
-      onRuntimeInitialized: () => {
-        console.log('OpenCV.js WASM runtime initialized, checking for cv object...');
-
-        // Wait for window.cv to be available
-        const checkCvReady = setInterval(() => {
-          if (window.cv && window.cv.Mat) {
-            clearInterval(checkCvReady);
-            console.log('window.cv is ready! OpenCV.js fully initialized.');
-            setCvReady(true);
-            isOpenCVLoading = false;
-          }
-        }, 100);
-
-        // Timeout after 5 seconds
-        setTimeout(() => {
-          if (!window.cv || !window.cv.Mat) {
-            clearInterval(checkCvReady);
-            console.error('window.cv never became available after runtime init');
-            isOpenCVLoading = false;
-          }
-        }, 5000);
+    // Test Python availability
+    const checkPython = async () => {
+      try {
+        // This will be implemented as a simple ping to Python
+        setPythonReady(true); // For now, assume it's ready
+        console.log('Python backend ready');
+      } catch (error) {
+        console.error('Python backend not available:', error);
+        setPythonReady(false);
       }
     };
 
-    const script = document.createElement('script');
-    script.src = 'https://docs.opencv.org/3.4/opencv.js';
-    script.async = true;
+    checkPython();
+  }, []);
 
-    script.onerror = (error) => {
-      console.error('Failed to load OpenCV.js script:', error);
-      isOpenCVLoading = false;
-      alert('Failed to load OpenCV. Please check your internet connection and refresh the page.');
+  // Listen for progress updates from Python backend
+  useEffect(() => {
+    const handleProgress = (event, progressData) => {
+      setProgress({
+        current: progressData.current,
+        total: progressData.total,
+        status: progressData.status
+      });
     };
 
-    script.onload = () => {
-      console.log('OpenCV.js script loaded, waiting for WASM runtime to initialize...');
-
-      // Set a timeout as fallback
-      setTimeout(() => {
-        if (!window.cv || !window.cv.Mat) {
-          console.error('OpenCV.js WASM runtime failed to initialize after 30 seconds');
-          isOpenCVLoading = false;
-          alert('OpenCV failed to initialize. Please refresh the page.');
-        }
-      }, 30000); // 30 second timeout
+    const handleError = (event, errorMessage) => {
+      console.error('Python backend error:', errorMessage);
+      alert('Analysis error: ' + errorMessage);
     };
 
-    document.body.appendChild(script);
+    // Register IPC listeners
+    ipcRenderer.on('analysis-progress', handleProgress);
+    ipcRenderer.on('analysis-error', handleError);
 
+    // Cleanup listeners on unmount
     return () => {
-      // Don't remove the script on cleanup - keep it loaded
+      ipcRenderer.removeListener('analysis-progress', handleProgress);
+      ipcRenderer.removeListener('analysis-error', handleError);
     };
   }, []);
 
@@ -131,81 +66,42 @@ function App() {
   };
 
   const handleProcessImages = async () => {
-    if (!cvReady) {
-      alert('OpenCV is still loading. Please wait a moment and try again.');
-      return;
-    }
-
     if (images.length === 0) {
       alert('Please load images first');
       return;
     }
 
+    if (images.length < 2) {
+      alert('Please load at least 2 images for clustering analysis');
+      return;
+    }
+
     setProcessing(true);
-    setProgress({ current: 0, total: images.length, status: 'Detecting features...' });
+    setProgress({ current: 0, total: images.length, status: 'Starting analysis...' });
 
     try {
-      // Step 1: Detect features in all images
-      const allFeatures = [];
-      for (let i = 0; i < images.length; i++) {
-        setProgress({
-          current: i + 1,
-          total: images.length,
-          status: `Detecting features in image ${i + 1}/${images.length}...`
-        });
+      // Call Python backend to analyze images
+      const result = await ipcRenderer.invoke('analyze-images', images);
 
-        const imageFeatures = await detectFeatures(images[i]);
-        allFeatures.push({
-          imagePath: images[i],
-          descriptors: imageFeatures.descriptors,
-          keypoints: imageFeatures.keypoints
-        });
-
-        // Small delay to allow UI updates
-        await new Promise(resolve => setTimeout(resolve, 10));
+      if (!result.success) {
+        throw new Error(result.error || 'Analysis failed');
       }
 
-      setFeatures(allFeatures);
-      setProgress({ current: 0, total: 0, status: 'Computing similarity matrix...' });
+      // Store features and clustering results
+      setFeatures(result.features);
+      setClustering(result.clustering);
 
-      // Step 2: Compute distance matrix
-      const n = allFeatures.length;
-      const distanceMatrix = Array(n).fill(null).map(() => Array(n).fill(0));
+      setProgress({ current: 0, total: 0, status: 'Analysis complete!' });
 
-      let pairCount = 0;
-      const totalPairs = (n * (n - 1)) / 2;
+      console.log('Analysis complete:', {
+        featureCount: result.features.length,
+        totalFeatures: result.features.reduce((sum, f) => sum + f.num_features, 0)
+      });
 
-      for (let i = 0; i < n; i++) {
-        for (let j = i + 1; j < n; j++) {
-          pairCount++;
-          setProgress({
-            current: pairCount,
-            total: totalPairs,
-            status: `Comparing images ${i + 1} and ${j + 1}...`
-          });
-
-          const distance = matchFeatures(
-            allFeatures[i].descriptors,
-            allFeatures[j].descriptors
-          );
-
-          distanceMatrix[i][j] = distance;
-          distanceMatrix[j][i] = distance;
-
-          await new Promise(resolve => setTimeout(resolve, 5));
-        }
-      }
-
-      // Step 3: Perform hierarchical clustering
-      setProgress({ current: 0, total: 0, status: 'Performing clustering...' });
-
-      const clusterResult = performClustering(distanceMatrix, allFeatures);
-      setClustering(clusterResult);
-
-      setProgress({ current: 0, total: 0, status: 'Complete!' });
     } catch (error) {
       console.error('Error processing images:', error);
       alert('Error processing images: ' + error.message);
+      setProgress({ current: 0, total: 0, status: 'Error occurred' });
     } finally {
       setProcessing(false);
     }
@@ -223,8 +119,9 @@ function App() {
       images: images,
       clustering: clustering,
       features: features.map(f => ({
-        imagePath: f.imagePath,
-        keypointCount: f.keypoints.length
+        name: f.name,
+        path: f.path,
+        keypointCount: f.num_features
       }))
     };
 
@@ -235,6 +132,10 @@ function App() {
       alert('Study exported successfully!');
     }
   };
+
+  const totalFeatures = features.length > 0
+    ? features.reduce((sum, f) => sum + (f.num_features || 0), 0)
+    : 0;
 
   return (
     <div className="app">
@@ -252,7 +153,7 @@ function App() {
             processing={processing}
             hasImages={images.length > 0}
             hasClustering={clustering !== null}
-            cvReady={cvReady}
+            cvReady={pythonReady}
           />
 
           {processing && (
@@ -282,14 +183,12 @@ function App() {
             </div>
             <div className="info-item">
               <span className="info-label">Features Detected:</span>
-              <span className="info-value">
-                {features.length > 0 ? features.reduce((sum, f) => sum + f.keypoints.length, 0) : 0}
-              </span>
+              <span className="info-value">{totalFeatures}</span>
             </div>
             <div className="info-item">
-              <span className="info-label">OpenCV Status:</span>
-              <span className="info-value" style={{ color: cvReady ? '#27ae60' : '#e74c3c' }}>
-                {cvReady ? 'Ready' : 'Loading...'}
+              <span className="info-label">Python Backend:</span>
+              <span className="info-value" style={{ color: pythonReady ? '#27ae60' : '#e74c3c' }}>
+                {pythonReady ? 'Ready' : 'Not Available'}
               </span>
             </div>
           </div>

@@ -7,6 +7,9 @@ import { performClustering } from './utils/clustering';
 
 const { ipcRenderer } = window.require('electron');
 
+// Module-level flag to prevent duplicate OpenCV loading across React re-renders
+let isOpenCVLoading = false;
+
 function App() {
   const [images, setImages] = useState([]);
   const [processing, setProcessing] = useState(false);
@@ -17,18 +20,17 @@ function App() {
 
   // Load OpenCV.js
   useEffect(() => {
-    // Check if OpenCV is already loaded or being loaded
+    // Check if OpenCV is already loaded
     if (window.cv && window.cv.Mat) {
       setCvReady(true);
       console.log('OpenCV.js already loaded!');
       return;
     }
 
-    // Check if script is already in the page
-    const existingScript = document.querySelector('script[src*="opencv.js"]');
-    if (existingScript) {
-      console.log('OpenCV script already exists, waiting for it...');
-      // Wait for existing script to load
+    // Check if we're already loading (prevents React StrictMode double-loading)
+    if (isOpenCVLoading) {
+      console.log('OpenCV is already being loaded, waiting...');
+      // Wait for the existing load to complete
       const checkCv = setInterval(() => {
         if (window.cv && window.cv.Mat) {
           clearInterval(checkCv);
@@ -39,6 +41,26 @@ function App() {
       return;
     }
 
+    // Check if script is already in the page
+    const existingScript = document.querySelector('script[src*="opencv.js"]');
+    if (existingScript) {
+      console.log('OpenCV script already exists, waiting for it...');
+      isOpenCVLoading = true; // Mark as loading
+      // Wait for existing script to load
+      const checkCv = setInterval(() => {
+        if (window.cv && window.cv.Mat) {
+          clearInterval(checkCv);
+          setCvReady(true);
+          isOpenCVLoading = false; // Mark as done
+          console.log('OpenCV.js is ready!');
+        }
+      }, 100);
+      return;
+    }
+
+    // Mark that we're starting to load
+    isOpenCVLoading = true;
+
     const script = document.createElement('script');
     // Use official OpenCV.org CDN
     script.src = 'https://docs.opencv.org/3.4/opencv.js';
@@ -46,6 +68,7 @@ function App() {
 
     script.onerror = (error) => {
       console.error('Failed to load OpenCV.js:', error);
+      isOpenCVLoading = false; // Reset flag on error
       alert('Failed to load OpenCV. Please check your internet connection and refresh the page.');
     };
 
@@ -61,9 +84,11 @@ function App() {
         if (window.cv && window.cv.Mat) {
           clearInterval(checkCv);
           setCvReady(true);
+          isOpenCVLoading = false; // Mark as done
           console.log('OpenCV.js is ready!');
         } else if (attempts >= maxAttempts) {
           clearInterval(checkCv);
+          isOpenCVLoading = false; // Reset flag on timeout
           console.error('OpenCV.js failed to initialize after 15 seconds');
           alert('OpenCV failed to initialize. Please refresh the page.');
         }

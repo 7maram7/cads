@@ -17,6 +17,28 @@ function App() {
 
   // Load OpenCV.js
   useEffect(() => {
+    // Check if OpenCV is already loaded or being loaded
+    if (window.cv && window.cv.Mat) {
+      setCvReady(true);
+      console.log('OpenCV.js already loaded!');
+      return;
+    }
+
+    // Check if script is already in the page
+    const existingScript = document.querySelector('script[src*="opencv.js"]');
+    if (existingScript) {
+      console.log('OpenCV script already exists, waiting for it...');
+      // Wait for existing script to load
+      const checkCv = setInterval(() => {
+        if (window.cv && window.cv.Mat) {
+          clearInterval(checkCv);
+          setCvReady(true);
+          console.log('OpenCV.js is ready!');
+        }
+      }, 100);
+      return;
+    }
+
     const script = document.createElement('script');
     // Use official OpenCV.org CDN
     script.src = 'https://docs.opencv.org/3.4/opencv.js';
@@ -31,7 +53,7 @@ function App() {
       console.log('OpenCV script loaded, waiting for initialization...');
       // Wait for OpenCV to be ready
       let attempts = 0;
-      const maxAttempts = 100; // 10 seconds max
+      const maxAttempts = 150; // 15 seconds max (it's a 7MB file)
 
       const checkCv = setInterval(() => {
         attempts++;
@@ -42,7 +64,7 @@ function App() {
           console.log('OpenCV.js is ready!');
         } else if (attempts >= maxAttempts) {
           clearInterval(checkCv);
-          console.error('OpenCV.js failed to initialize after 10 seconds');
+          console.error('OpenCV.js failed to initialize after 15 seconds');
           alert('OpenCV failed to initialize. Please refresh the page.');
         }
       }, 100);
@@ -51,9 +73,7 @@ function App() {
     document.body.appendChild(script);
 
     return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
+      // Don't remove the script on cleanup - keep it loaded
     };
   }, []);
 

@@ -27,72 +27,63 @@ function App() {
       return;
     }
 
-    // Check if we're already loading (prevents React StrictMode double-loading)
+    // Check if we're already loading
     if (isOpenCVLoading) {
       console.log('OpenCV is already being loaded, waiting...');
-      // Wait for the existing load to complete
-      const checkCv = setInterval(() => {
-        if (window.cv && window.cv.Mat) {
-          clearInterval(checkCv);
-          setCvReady(true);
-          console.log('OpenCV.js is ready!');
-        }
-      }, 100);
       return;
     }
 
     // Check if script is already in the page
     const existingScript = document.querySelector('script[src*="opencv.js"]');
     if (existingScript) {
-      console.log('OpenCV script already exists, waiting for it...');
-      isOpenCVLoading = true; // Mark as loading
-      // Wait for existing script to load
-      const checkCv = setInterval(() => {
-        if (window.cv && window.cv.Mat) {
-          clearInterval(checkCv);
+      console.log('OpenCV script already exists, setting up callback...');
+      isOpenCVLoading = true;
+
+      // Set up the runtime initialization callback
+      window.Module = {
+        onRuntimeInitialized: () => {
+          console.log('OpenCV.js runtime initialized!');
           setCvReady(true);
-          isOpenCVLoading = false; // Mark as done
-          console.log('OpenCV.js is ready!');
+          isOpenCVLoading = false;
         }
-      }, 100);
+      };
       return;
     }
 
     // Mark that we're starting to load
     isOpenCVLoading = true;
+    console.log('Starting to load OpenCV.js...');
+
+    // Set up the Module callback BEFORE loading the script
+    window.Module = {
+      onRuntimeInitialized: () => {
+        console.log('OpenCV.js runtime initialized successfully!');
+        setCvReady(true);
+        isOpenCVLoading = false;
+      }
+    };
 
     const script = document.createElement('script');
-    // Use official OpenCV.org CDN
     script.src = 'https://docs.opencv.org/3.4/opencv.js';
     script.async = true;
 
     script.onerror = (error) => {
-      console.error('Failed to load OpenCV.js:', error);
-      isOpenCVLoading = false; // Reset flag on error
+      console.error('Failed to load OpenCV.js script:', error);
+      isOpenCVLoading = false;
       alert('Failed to load OpenCV. Please check your internet connection and refresh the page.');
     };
 
     script.onload = () => {
-      console.log('OpenCV script loaded, waiting for initialization...');
-      // Wait for OpenCV to be ready
-      let attempts = 0;
-      const maxAttempts = 150; // 15 seconds max (it's a 7MB file)
+      console.log('OpenCV.js script loaded, waiting for WASM runtime to initialize...');
 
-      const checkCv = setInterval(() => {
-        attempts++;
-
-        if (window.cv && window.cv.Mat) {
-          clearInterval(checkCv);
-          setCvReady(true);
-          isOpenCVLoading = false; // Mark as done
-          console.log('OpenCV.js is ready!');
-        } else if (attempts >= maxAttempts) {
-          clearInterval(checkCv);
-          isOpenCVLoading = false; // Reset flag on timeout
-          console.error('OpenCV.js failed to initialize after 15 seconds');
+      // Set a timeout as fallback
+      setTimeout(() => {
+        if (!window.cv || !window.cv.Mat) {
+          console.error('OpenCV.js WASM runtime failed to initialize after 30 seconds');
+          isOpenCVLoading = false;
           alert('OpenCV failed to initialize. Please refresh the page.');
         }
-      }, 100);
+      }, 30000); // 30 second timeout
     };
 
     document.body.appendChild(script);

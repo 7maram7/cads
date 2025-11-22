@@ -18,18 +18,36 @@ function App() {
   // Load OpenCV.js
   useEffect(() => {
     const script = document.createElement('script');
-    script.src = 'https://docs.opencv.org/4.8.0/opencv.js';
+    // Use unpkg.com CDN - more reliable than opencv.org
+    script.src = 'https://unpkg.com/@techstark/opencv-js@1.2.0/opencv.js';
     script.async = true;
+
+    script.onerror = (error) => {
+      console.error('Failed to load OpenCV.js:', error);
+      alert('Failed to load OpenCV. Please check your internet connection and refresh the page.');
+    };
+
     script.onload = () => {
+      console.log('OpenCV script loaded, waiting for initialization...');
       // Wait for OpenCV to be ready
+      let attempts = 0;
+      const maxAttempts = 100; // 10 seconds max
+
       const checkCv = setInterval(() => {
+        attempts++;
+
         if (window.cv && window.cv.Mat) {
           clearInterval(checkCv);
           setCvReady(true);
-          console.log('OpenCV.js is ready');
+          console.log('OpenCV.js is ready!');
+        } else if (attempts >= maxAttempts) {
+          clearInterval(checkCv);
+          console.error('OpenCV.js failed to initialize after 10 seconds');
+          alert('OpenCV failed to initialize. Please refresh the page.');
         }
       }, 100);
     };
+
     document.body.appendChild(script);
 
     return () => {

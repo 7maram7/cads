@@ -5,12 +5,28 @@
 
 export async function detectFeatures(imagePath) {
   return new Promise((resolve, reject) => {
+    console.log('Loading image:', imagePath);
+
     const img = new Image();
     img.crossOrigin = 'anonymous';
 
     img.onload = () => {
+      console.log('Image loaded successfully:', imagePath);
       try {
         const cv = window.cv;
+
+        // Verify OpenCV is ready
+        if (!cv) {
+          console.error('window.cv is undefined!');
+          reject(new Error('OpenCV (window.cv) is undefined. Please wait for initialization.'));
+          return;
+        }
+
+        if (!cv.imread) {
+          console.error('cv.imread is undefined! Available cv properties:', Object.keys(cv).slice(0, 20));
+          reject(new Error('cv.imread is undefined. OpenCV may not be fully initialized.'));
+          return;
+        }
 
         // Create canvas and load image
         const canvas = document.createElement('canvas');
@@ -78,11 +94,16 @@ export async function detectFeatures(imagePath) {
       }
     };
 
-    img.onerror = () => {
+    img.onerror = (error) => {
+      console.error('Failed to load image:', imagePath, error);
       reject(new Error(`Failed to load image: ${imagePath}`));
     };
 
-    img.src = `file://${imagePath}`;
+    // In Electron with webSecurity: false, we can load local files directly
+    // Make sure the path is properly formatted
+    const fileUrl = imagePath.startsWith('file://') ? imagePath : `file://${imagePath}`;
+    console.log('Setting image src to:', fileUrl);
+    img.src = fileUrl;
   });
 }
 

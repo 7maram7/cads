@@ -18,8 +18,8 @@ function App() {
   // Load OpenCV.js
   useEffect(() => {
     const script = document.createElement('script');
-    // Use jsdelivr CDN - reliable and fast
-    script.src = 'https://cdn.jsdelivr.net/npm/@techstark/opencv-js@1.2.14/opencv.js';
+    // Use official OpenCV.org CDN
+    script.src = 'https://docs.opencv.org/3.4/opencv.js';
     script.async = true;
 
     script.onerror = (error) => {

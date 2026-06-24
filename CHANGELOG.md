@@ -1,13 +1,13 @@
 # Changelog
 
-All notable changes to **CADS Modern** are documented in this file.
+All notable changes to **CADS** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [2.1.0] - 2026-06-24
 
-This release makes CADS Modern usable on real-world, large-scale die studies
+This release makes CADS usable on real-world, large-scale die studies
 (thousands of coins). It fixes the bugs that prevented clustering from running
 at all, removes the dependence on an internet connection for OpenCV, and adds
 checkpointing, pause/resume, progress estimates, study save/reload, and a die
@@ -71,7 +71,7 @@ grouping view.
 
 ## [2.0.0] - 2025-11-22
 
-Initial release of **CADS Modern**: a complete rebuild of CADS on a modern
+Initial release of the rebuilt **CADS**: a complete rebuild on a modern
 stack — Electron 32, React 18, Vite 5, and WebAssembly OpenCV.js — replacing the
 legacy Electron 6 + `opencv4nodejs` application, which required Python and native
 compilation and was effectively unbuildable on current machines. Provides folder

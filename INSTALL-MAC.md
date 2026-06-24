@@ -16,17 +16,17 @@ node --version  # Should show v20.x.x or higher
 npm --version   # Should show v10.x.x or higher
 ```
 
-### 2. Download CADS Modern
+### 2. Download CADS
 
 ```bash
 # Navigate to your home directory
 cd ~/
 
 # Clone the repository
-git clone <your-repo-url> cads-modern
+git clone https://github.com/7maram7/cads.git
 
 # Or if you have the code already, just navigate to it
-cd cads-modern
+cd cads
 ```
 
 ### 3. Install Dependencies
@@ -49,10 +49,10 @@ The application window should open automatically!
 
 No Python, no CMake, no native compilation, no headaches.
 
-## Using CADS Modern
+## Using CADS
 
 ### First Time Setup
-1. Wait for "OpenCV Status: Ready" in the sidebar (takes ~10 seconds)
+1. Wait for "OpenCV Status: Ready" in the sidebar (usually a few seconds)
 2. Click "📁 Load Coin Images" and select your folder
 3. Click "🔍 Analyze Dies" to process
 4. View the dendrogram results
@@ -84,9 +84,9 @@ No Python, no CMake, no native compilation, no headaches.
 ## Troubleshooting
 
 ### "OpenCV is still loading"
-- Wait 10-15 seconds after app starts
-- Check internet connection (OpenCV.js downloads from CDN on first run)
-- Restart the app
+- OpenCV.js is bundled with the app (no internet needed) and is usually ready within a few seconds
+- If the status shows "Failed", the error message appears below it in the sidebar
+- Restart the app if it stays on "Loading..."
 
 ### App won't start
 ```bash

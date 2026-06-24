@@ -1,6 +1,19 @@
 import React from 'react';
 
-function Controls({ onLoadImages, onProcess, onExport, processing, hasImages, hasClustering, cvReady }) {
+function Controls({
+  onLoadImages,
+  onProcess,
+  onExport,
+  onLoadStudy,
+  onResumeCheckpoint,
+  onPauseToggle,
+  paused,
+  processing,
+  hasImages,
+  hasClustering,
+  cvReady,
+  hasCheckpoint
+}) {
   return (
     <div className="controls">
       <button
@@ -17,6 +30,30 @@ function Controls({ onLoadImages, onProcess, onExport, processing, hasImages, ha
         disabled={!hasImages || processing || !cvReady}
       >
         {processing ? '⏳ Processing...' : '🔍 Analyze Dies'}
+      </button>
+
+      {processing && (
+        <button className="button" onClick={onPauseToggle}>
+          {paused ? '▶️ Continue' : '⏸️ Pause'}
+        </button>
+      )}
+
+      {hasCheckpoint && !processing && (
+        <button
+          className="button secondary"
+          onClick={onResumeCheckpoint}
+          disabled={!cvReady}
+        >
+          ▶️ Resume Saved Analysis
+        </button>
+      )}
+
+      <button
+        className="button"
+        onClick={onLoadStudy}
+        disabled={processing}
+      >
+        📂 Load Study
       </button>
 
       <button

@@ -1,6 +1,5 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { join } from 'path';
 
 export default defineConfig({
   plugins: [react()],
@@ -11,16 +10,12 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'd3': ['d3'],
-          'opencv': ['opencv.js']
+          d3: ['d3']
         }
       }
     }
   },
   server: {
     port: 5173
-  },
-  optimizeDeps: {
-    exclude: ['opencv.js']
   }
 });

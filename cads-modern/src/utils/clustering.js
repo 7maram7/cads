@@ -7,7 +7,8 @@ import { agnes } from 'ml-hclust';
 export function performClustering(distanceMatrix, features) {
   // Perform hierarchical clustering using complete linkage
   const clustering = agnes(distanceMatrix, {
-    method: 'complete' // Same method as original CADS
+    method: 'complete', // Same method as original CADS
+    isDistanceMatrix: true // Input is a precomputed distance matrix, not raw vectors
   });
 
   // Convert clustering result to dendrogram format for D3
@@ -25,21 +26,15 @@ function buildDendrogramTree(node, features, depth = 0) {
     return {
       imagePath: features[node.index].imagePath,
       index: node.index,
-      keypointCount: features[node.index].keypoints.length,
+      keypointCount: features[node.index].keypointCount,
       depth: depth
     };
   }
 
-  // Internal node - has children
-  const children = [];
-
-  if (node.left) {
-    children.push(buildDendrogramTree(node.left, features, depth + 1));
-  }
-
-  if (node.right) {
-    children.push(buildDendrogramTree(node.right, features, depth + 1));
-  }
+  // Internal node - has children (ml-hclust v3 uses a children[] array, not left/right)
+  const children = node.children.map(child =>
+    buildDendrogramTree(child, features, depth + 1)
+  );
 
   return {
     children: children,

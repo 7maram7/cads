@@ -1,15 +1,19 @@
 # CADS Modern - Computer-Aided Die Study Tool
 
-A modern, rebuilt version of CADS using the latest technologies. Works seamlessly on macOS (including M1/M2/M3/M4), Windows, and Linux.
+**Version 2.1.0** · A modern, rebuilt version of CADS using the latest technologies. Works seamlessly on macOS (including M1/M2/M3/M4), Windows, and Linux. See [CHANGELOG.md](./CHANGELOG.md) for release history.
 
 ## ✨ Features
 
 - 📁 **Load coin images** from any folder
-- 🔍 **Automatic feature detection** using OpenCV.js ORB algorithm
+- 🔍 **Automatic feature detection** using OpenCV.js ORB algorithm (bundled locally — no internet needed)
 - 📊 **Hierarchical clustering** to group coins by die similarity
 - 🌳 **Interactive dendrogram visualization** using D3.js
-- 💾 **Export results** as JSON for further analysis
-- ⚡ **Modern, fast, and responsive** UI
+- 🧩 **Die Groups view** — cut the dendrogram at an adjustable distance threshold to form candidate die groups
+- 💾 **Save & reload studies** as JSON, no need to re-run the analysis
+- 💽 **Crash-safe checkpointing** — long runs survive closing or crashing the app and can be resumed
+- ⏸️ **Pause / continue** processing at any time
+- ⏱️ **Live progress with elapsed time and ETA**
+- ⚡ **Modern, fast, and responsive** UI, tuned for studies of thousands of coins
 
 ## 🚀 Installation (Mac M4)
 
@@ -44,21 +48,27 @@ That's it! No Python, no native compilation, no headaches.
 
 2. **Analyze Dies**
    - Click "🔍 Analyze Dies"
-   - Wait for processing (shows progress bar)
+   - The progress bar shows the current phase, elapsed time, and an estimated time remaining
    - The tool will:
      - Detect features in each image
      - Compare all images pairwise
      - Perform hierarchical clustering
+   - Use "⏸️ Pause" / "▶️ Continue" to interrupt and resume a run at any time
+   - The run is checkpointed to disk as it goes. If you close (or crash) the app
+     mid-analysis, reopen it and click "▶️ Resume Saved Analysis" to continue
+     where it left off
 
 3. **View Results**
-   - The dendrogram shows die relationships
-   - Shorter branches = more similar dies
-   - Leaf nodes = individual coins
+   - The dendrogram shows die relationships — shorter branches = more similar dies, leaf nodes = individual coins
+   - The **Die Groups** panel below it cuts the dendrogram at a distance
+     threshold you control with a slider; lower values produce stricter
+     (smaller) groups
 
-4. **Export**
-   - Click "💾 Export Results"
-   - Save the study as JSON
-   - Includes clustering data and feature information
+4. **Export & reload**
+   - Click "💾 Export Results" to save the study as JSON (clustering data and
+     feature information)
+   - Click "📂 Load Study" later to reopen an exported JSON and restore the
+     dendrogram and die groups without re-running the analysis
 
 ## 🏗️ Technology Stack
 
@@ -143,9 +153,9 @@ The JSON export includes:
 ## 🐛 Troubleshooting
 
 ### OpenCV not loading
-- Wait 10-15 seconds after app starts
-- Check "OpenCV Status" in sidebar shows "Ready"
-- Refresh the app if needed
+- OpenCV.js is bundled locally in `public/opencv.js` (no internet needed)
+- Check "OpenCV Status" in sidebar shows "Ready" (usually within a few seconds)
+- If it shows "Failed", the error message appears below the status
 
 ### Images not displaying
 - Make sure image paths don't contain special characters

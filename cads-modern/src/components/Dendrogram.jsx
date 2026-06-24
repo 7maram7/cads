@@ -65,7 +65,7 @@ function Dendrogram({ data, images }) {
       .style('fill', '#2c3e50')
       .text(d => {
         if (d.data.imagePath) {
-          const filename = d.data.imagePath.split('/').pop();
+          const filename = d.data.imagePath.split(/[\\/]/).pop();
           return filename.length > 30 ? filename.substring(0, 27) + '...' : filename;
         }
         return '';

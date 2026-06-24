@@ -59,6 +59,95 @@ ipcMain.handle('select-folder', async () => {
   return imageFiles;
 });
 
+// ---------------------------------------------------------------------------
+// Checkpointing — lets a long analysis survive closing the app.
+// Stored in the OS user-data dir: meta.json, features.json, features.bin
+// (ORB descriptors), distances.bin (Float32 upper-triangle distance matrix).
+// ---------------------------------------------------------------------------
+const checkpointDir = () => join(app.getPath('userData'), 'cads-checkpoint');
+
+const toBuffer = (arr) =>
+  Buffer.from(arr.buffer ?? arr, arr.byteOffset ?? 0, arr.byteLength ?? arr.length);
+
+ipcMain.handle('checkpoint-exists', async () => {
+  try {
+    return JSON.parse(await fs.readFile(join(checkpointDir(), 'meta.json'), 'utf8'));
+  } catch {
+    return null;
+  }
+});
+
+ipcMain.handle('checkpoint-save-meta', async (event, meta) => {
+  await fs.mkdir(checkpointDir(), { recursive: true });
+  await fs.writeFile(join(checkpointDir(), 'meta.json'), JSON.stringify(meta));
+  return true;
+});
+
+ipcMain.handle('checkpoint-save-features', async (event, descData, rows, cols, keypointCounts) => {
+  await fs.mkdir(checkpointDir(), { recursive: true });
+  await fs.writeFile(join(checkpointDir(), 'features.bin'), toBuffer(descData));
+  await fs.writeFile(
+    join(checkpointDir(), 'features.json'),
+    JSON.stringify({ rows, cols, keypointCounts })
+  );
+  return true;
+});
+
+ipcMain.handle('checkpoint-save-distances', async (event, distances, pairIndex) => {
+  const dir = checkpointDir();
+  await fs.mkdir(dir, { recursive: true });
+  // Write atomically so a crash mid-write can't corrupt the checkpoint
+  const tmp = join(dir, 'distances.bin.tmp');
+  await fs.writeFile(tmp, toBuffer(distances));
+  await fs.rename(tmp, join(dir, 'distances.bin'));
+  try {
+    const meta = JSON.parse(await fs.readFile(join(dir, 'meta.json'), 'utf8'));
+    meta.pairIndex = pairIndex;
+    meta.savedAt = Date.now();
+    await fs.writeFile(join(dir, 'meta.json'), JSON.stringify(meta));
+  } catch {
+    // meta missing — ignore
+  }
+  return true;
+});
+
+ipcMain.handle('checkpoint-load', async () => {
+  try {
+    const dir = checkpointDir();
+    const meta = JSON.parse(await fs.readFile(join(dir, 'meta.json'), 'utf8'));
+    const featureInfo = JSON.parse(await fs.readFile(join(dir, 'features.json'), 'utf8'));
+    const descriptors = await fs.readFile(join(dir, 'features.bin'));
+    let distances = null;
+    try {
+      distances = await fs.readFile(join(dir, 'distances.bin'));
+    } catch {
+      // no distances yet — resume from the start of matching
+    }
+    return { meta, featureInfo, descriptors, distances };
+  } catch {
+    return null;
+  }
+});
+
+ipcMain.handle('checkpoint-clear', async () => {
+  await fs.rm(checkpointDir(), { recursive: true, force: true });
+  return true;
+});
+
+// Open a previously exported study JSON
+ipcMain.handle('open-study', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    filters: [{ name: 'JSON Files', extensions: ['json'] }]
+  });
+  if (result.canceled) return null;
+  try {
+    return JSON.parse(await fs.readFile(result.filePaths[0], 'utf8'));
+  } catch (error) {
+    return { error: `Could not read study file: ${error.message}` };
+  }
+});
+
 // Handle file save
 ipcMain.handle('save-file', async (event, data, filename) => {
   const result = await dialog.showSaveDialog(mainWindow, {

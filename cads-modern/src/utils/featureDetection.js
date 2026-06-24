@@ -5,26 +5,15 @@
 
 export async function detectFeatures(imagePath) {
   return new Promise((resolve, reject) => {
-    console.log('Loading image:', imagePath);
-
     const img = new Image();
     img.crossOrigin = 'anonymous';
 
     img.onload = () => {
-      console.log('Image loaded successfully:', imagePath);
       try {
         const cv = window.cv;
 
-        // Verify OpenCV is ready
-        if (!cv) {
-          console.error('window.cv is undefined!');
-          reject(new Error('OpenCV (window.cv) is undefined. Please wait for initialization.'));
-          return;
-        }
-
-        if (!cv.imread) {
-          console.error('cv.imread is undefined! Available cv properties:', Object.keys(cv).slice(0, 20));
-          reject(new Error('cv.imread is undefined. OpenCV may not be fully initialized.'));
+        if (!cv || !cv.imread) {
+          reject(new Error('OpenCV is not fully initialized.'));
           return;
         }
 
@@ -52,99 +41,80 @@ export async function detectFeatures(imagePath) {
         // Detect keypoints and compute descriptors
         let keypoints = new cv.KeyPointVector();
         let descriptors = new cv.Mat();
+        let mask = new cv.Mat();
 
-        orb.detectAndCompute(blurred, new cv.Mat(), keypoints, descriptors);
+        orb.detectAndCompute(blurred, mask, keypoints, descriptors);
 
-        // Convert descriptors to array for storage
-        const descriptorArray = [];
-        for (let i = 0; i < descriptors.rows; i++) {
-          const row = [];
-          for (let j = 0; j < descriptors.cols; j++) {
-            row.push(descriptors.ucharAt(i, j));
-          }
-          descriptorArray.push(row);
-        }
+        // Copy descriptors out as a compact byte array (rows x cols, CV_8U).
+        // Much smaller in memory than nested JS arrays — matters for
+        // thousand-image studies.
+        const descRows = descriptors.rows;
+        const descCols = descriptors.cols || 32;
+        const descriptorData = new Uint8Array(
+          descriptors.data.subarray(0, descRows * descCols)
+        );
 
-        // Convert keypoints to simple objects
-        const keypointArray = [];
-        for (let i = 0; i < keypoints.size(); i++) {
-          const kp = keypoints.get(i);
-          keypointArray.push({
-            x: kp.pt.x,
-            y: kp.pt.y,
-            size: kp.size,
-            angle: kp.angle,
-            response: kp.response
-          });
-        }
+        const keypointCount = keypoints.size();
 
-        // Clean up
+        // Clean up (everything allocated by OpenCV must be freed manually)
         src.delete();
         gray.delete();
         blurred.delete();
+        mask.delete();
         keypoints.delete();
         descriptors.delete();
+        orb.delete();
 
         resolve({
-          descriptors: descriptorArray,
-          keypoints: keypointArray
+          descriptors: descriptorData,
+          descRows,
+          descCols,
+          keypointCount
         });
       } catch (error) {
         reject(error);
       }
     };
 
-    img.onerror = (error) => {
-      console.error('Failed to load image:', imagePath, error);
+    img.onerror = () => {
       reject(new Error(`Failed to load image: ${imagePath}`));
     };
 
     // In Electron with webSecurity: false, we can load local files directly
-    // Make sure the path is properly formatted
     const fileUrl = imagePath.startsWith('file://') ? imagePath : `file://${imagePath}`;
-    console.log('Setting image src to:', fileUrl);
     img.src = fileUrl;
   });
 }
 
 /**
- * Match features between two sets of descriptors using BFMatcher
- * Returns a distance score (lower = more similar)
+ * Build a reusable cv.Mat from stored descriptor bytes. Building these once
+ * per image (instead of once per pair) makes large studies far faster.
  */
-export function matchFeatures(descriptors1, descriptors2) {
+export function buildDescriptorMat(feature) {
+  const cv = window.cv;
+  const mat = new cv.Mat(feature.descRows, feature.descCols || 32, cv.CV_8U);
+  if (feature.descRows > 0) {
+    mat.data.set(feature.descriptors);
+  }
+  return mat;
+}
+
+/**
+ * Match two descriptor Mats with a shared BFMatcher.
+ * Returns a distance score (lower = more similar).
+ */
+export function matchDescriptorMats(bf, desc1, desc2) {
   const cv = window.cv;
 
-  if (descriptors1.length === 0 || descriptors2.length === 0) {
+  if (desc1.rows === 0 || desc2.rows === 0) {
     return 1000; // Maximum distance if no features
   }
 
+  const matches = new cv.DMatchVector();
   try {
-    // Convert descriptor arrays back to cv.Mat
-    const desc1 = cv.matFromArray(
-      descriptors1.length,
-      descriptors1[0].length,
-      cv.CV_8U,
-      descriptors1.flat()
-    );
-
-    const desc2 = cv.matFromArray(
-      descriptors2.length,
-      descriptors2[0].length,
-      cv.CV_8U,
-      descriptors2.flat()
-    );
-
-    // Create BFMatcher with Hamming distance (for ORB)
-    const bf = new cv.BFMatcher(cv.NORM_HAMMING, true);
-
-    // Match descriptors
-    let matches = new cv.DMatchVector();
     bf.match(desc1, desc2, matches);
 
     if (matches.size() === 0) {
-      desc1.delete();
-      desc2.delete();
-      matches.delete();
       return 1000;
     }
 
@@ -153,21 +123,15 @@ export function matchFeatures(descriptors1, descriptors2) {
     for (let i = 0; i < matches.size(); i++) {
       totalDistance += matches.get(i).distance;
     }
-
     const avgDistance = totalDistance / matches.size();
 
     // Normalize by number of matches (fewer matches = less similar)
-    const matchRatio = matches.size() / Math.max(descriptors1.length, descriptors2.length);
-    const normalizedDistance = avgDistance / (matchRatio + 0.01); // Avoid division by zero
-
-    // Clean up
-    desc1.delete();
-    desc2.delete();
-    matches.delete();
-
-    return normalizedDistance;
+    const matchRatio = matches.size() / Math.max(desc1.rows, desc2.rows);
+    return avgDistance / (matchRatio + 0.01);
   } catch (error) {
     console.error('Error matching features:', error);
-    return 1000; // Return max distance on error
+    return 1000;
+  } finally {
+    matches.delete();
   }
 }
